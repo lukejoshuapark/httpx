@@ -6,7 +6,12 @@ import (
 	"net/http"
 )
 
-func ReceiveJSON[T Validate](w http.ResponseWriter, r *http.Request) *T {
+type Ptr[T any] interface {
+	*T
+	Validate
+}
+
+func ReceiveJSON[T any, P Ptr[T]](w http.ResponseWriter, r *http.Request) *T {
 	if r.ContentLength < 1 {
 		problem := config.ProblemForLengthRequired()
 		RespondWithJSON(w, http.StatusLengthRequired, problem)
@@ -36,18 +41,20 @@ func ReceiveJSON[T Validate](w http.ResponseWriter, r *http.Request) *T {
 	}
 
 	var requestModel T
+	var requestModelPointer P = &requestModel
+
 	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&requestModel); err != nil {
+	if err := decoder.Decode(requestModelPointer); err != nil {
 		problem := config.ProblemForInvalidJSON(err)
 		RespondWithJSON(w, http.StatusBadRequest, problem)
 		return nil
 	}
 
-	if err := requestModel.Validate(); err != nil {
+	if err := requestModelPointer.Validate(); err != nil {
 		problem := config.ProblemForUnprocessableEntity(err)
 		RespondWithJSON(w, http.StatusUnprocessableEntity, problem)
 		return nil
 	}
 
-	return &requestModel
+	return requestModelPointer
 }
