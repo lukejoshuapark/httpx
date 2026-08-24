@@ -2,7 +2,6 @@ package httpx
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -10,7 +9,7 @@ import (
 )
 
 type Service struct {
-	port    uint16
+	addr    string
 	handler http.Handler
 
 	configureServer func(*http.Server)
@@ -21,9 +20,9 @@ type Service struct {
 
 var _ app.Service = (*Service)(nil)
 
-func NewService(port uint16, handler http.Handler) *Service {
+func NewService(addr string, handler http.Handler) *Service {
 	return &Service{
-		port:    port,
+		addr:    addr,
 		handler: handler,
 
 		shutdownTimeout: 10 * time.Second,
@@ -48,7 +47,7 @@ func (s *Service) WithTLS(certFile, keyFile string) *Service {
 
 func (s *Service) Run(ctx context.Context) error {
 	svr := &http.Server{
-		Addr:              fmt.Sprintf(":%d", s.port),
+		Addr:              s.addr,
 		Handler:           s.handler,
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,

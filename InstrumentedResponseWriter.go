@@ -35,6 +35,16 @@ func (w *InstrumentedResponseWriter) WriteHeader(statusCode int) {
 	w.w.WriteHeader(statusCode)
 }
 
+func (w *InstrumentedResponseWriter) Flush() {
+	if f, ok := w.w.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+func (w *InstrumentedResponseWriter) Unwrap() http.ResponseWriter {
+	return w.w
+}
+
 func (w *InstrumentedResponseWriter) Elapsed() time.Duration {
 	return time.Since(w.created)
 }
