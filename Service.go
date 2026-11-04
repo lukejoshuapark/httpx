@@ -2,6 +2,7 @@ package httpx
 
 import (
 	"context"
+	"crypto/tls"
 	"net/http"
 	"time"
 
@@ -16,6 +17,7 @@ type Service struct {
 	shutdownTimeout time.Duration
 	certFile        string
 	keyFile         string
+	tlsConfig       *tls.Config
 }
 
 var _ app.Service = (*Service)(nil)
@@ -45,6 +47,11 @@ func (s *Service) WithTLS(certFile, keyFile string) *Service {
 	return s
 }
 
+func (s *Service) WithTLSConfig(config *tls.Config) *Service {
+	s.tlsConfig = config
+	return s
+}
+
 func (s *Service) Run(ctx context.Context) error {
 	svr := &http.Server{
 		Addr:              s.addr,
@@ -53,6 +60,7 @@ func (s *Service) Run(ctx context.Context) error {
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,
 		IdleTimeout:       120 * time.Second,
+		TLSConfig:         s.tlsConfig,
 	}
 
 	if s.configureServer != nil {
@@ -61,7 +69,7 @@ func (s *Service) Run(ctx context.Context) error {
 
 	errc := make(chan error, 1)
 	go func() {
-		if s.certFile != "" && s.keyFile != "" {
+		if s.tlsConfig != nil || (s.certFile != "" && s.keyFile != "") {
 			errc <- svr.ListenAndServeTLS(s.certFile, s.keyFile)
 		} else {
 			errc <- svr.ListenAndServe()
